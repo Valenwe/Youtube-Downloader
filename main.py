@@ -223,8 +223,11 @@ if __name__ == "__main__":
 ░░▀░░▀▀▀░▀▀▀░░▀░░▀▀▀░▀▀░░▀▀▀░░░▀▀░░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀░░▀▀▀░▀░▀
                                                             by Valenwe"""
     if verbose:
-        banner += Color.string("(Verbosity ENABLED)\n", Color.CYAN)
+        banner += Color.string("\n(Verbosity ENABLED)", Color.CYAN)
     print(Color.string(banner, Color.YELLOW, True))
+
+    # Add version check
+    check_current_git_version()
 
     # Global variables
     # The input URL
@@ -257,8 +260,6 @@ if __name__ == "__main__":
                 "text": f"Set folder [current: {Color.string(output_folder, Color.YELLOW)}]"},
             {"action": "exit", "text": Color.string("Exit", Color.RED)}
         ]
-
-        check_current_git_version()
 
         # display menu and get user input
         print("")
