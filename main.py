@@ -3,6 +3,9 @@
 # ░▀▀▀░▀░▀░▀░░░▀▀▀░▀░▀░░▀░░▀▀▀
 # text retrieved from https://textkool.com/en/ascii-art-generator?hl=default&vl=default&font=Pagga
 
+import media_management
+import download
+import ytb_classes
 import msvcrt
 from enum import Enum
 from tqdm import tqdm
@@ -13,9 +16,6 @@ from pathlib import Path
 import locale
 locale.setlocale(locale.LC_NUMERIC, 'pl_PL')
 
-import ytb_classes
-import download
-import media_management
 
 class Color(Enum):
     """ Class for coloring print statements.  Nothing to see here, move along. """
@@ -48,6 +48,7 @@ class Color(Enum):
 
         return f'{boldstr}{color.value}{string}{Color.END.value}'
 
+
 def check_current_git_version():
     """ Check if current Git repository is up to date
     """
@@ -62,7 +63,9 @@ def check_current_git_version():
 
     # Check if the local branch is up to date with the remote branch
     if branch.commit.hexsha != repo.remotes.origin.refs[branch.name].commit.hexsha:
-        print(Color.string(f"Current repository is not up to date. Try updating it with git clone {Color.string(repo.remotes.origin.url, Color.CYAN)}", Color.RED))
+        print(Color.string(
+            f"Current repository is not up to date. Try updating it with {Color.string(f'git clone {repo.remotes.origin.url}', Color.CYAN)}", Color.RED))
+
 
 def detect_url(in_url: str) -> tuple[str, object]:
     """ Will try to convert a URL to a special class
@@ -87,6 +90,7 @@ def detect_url(in_url: str) -> tuple[str, object]:
                 "Provided link is not a valid Youtube link.", Color.RED))
     return url, url_type
 
+
 def manage_video(video: ytb_classes.Video, media_type: str) -> str | None:
     """ Will retrieve video intel, download and convert it
     Args:
@@ -108,13 +112,15 @@ def manage_video(video: ytb_classes.Video, media_type: str) -> str | None:
 
     formats = video.get_extraction_url()
     if not formats:
-        print(Color.string("Cannot fetch Youtube data on provided link. Is it private?", Color.RED))
+        print(Color.string(
+            "Cannot fetch Youtube data on provided link. Is it private?", Color.RED))
         return None
 
     usable_formats = []
 
     if len(formats[media_type]) == 0:
-        print(Color.string(f"No available formats for {media_type} type. Select one from those, it will then be converted", Color.YELLOW))
+        print(Color.string(
+            f"No available formats for {media_type} type. Select one from those, it will then be converted", Color.YELLOW))
         for key in formats:
             usable_formats += formats[key]
     else:
@@ -127,7 +133,8 @@ def manage_video(video: ytb_classes.Video, media_type: str) -> str | None:
         i = 0
         for format in usable_formats:
             i += 1
-            display_format = {"Mime": format["mime"], "Bitrate": locale.format_string('%.2d', format["bitrate"], grouping=True)}
+            display_format = {"Mime": format["mime"], "Bitrate": locale.format_string(
+                '%.2d', format["bitrate"], grouping=True)}
             print(f"\n{i}. ", end="")
             for elem in display_format:
                 # padding system for a better view of the stats
@@ -137,7 +144,8 @@ def manage_video(video: ytb_classes.Video, media_type: str) -> str | None:
                 else:
                     padding = ""
                     print_padding = "{}"
-                print(print_padding.format(Color.string(elem, Color.YELLOW) + ": " + Color.string(display_format[elem], Color.GREEN) + padding), end=" ")
+                print(print_padding.format(Color.string(elem, Color.YELLOW) + ": " +
+                      Color.string(display_format[elem], Color.GREEN) + padding), end=" ")
 
         print("\n\n>>> ", end="")
         choice = str(msvcrt.getch()).split("'")[1].upper()
@@ -166,18 +174,21 @@ def manage_video(video: ytb_classes.Video, media_type: str) -> str | None:
     #     filename = media_management.convert_to(filename, ext_destination, verbose)
 
     if not filename:
-        print(Color.string(f"Could not convert to {ext_destination}. Do you have ffmpeg in PATH?", Color.RED))
+        print(Color.string(
+            f"Could not convert to {ext_destination}. Do you have ffmpeg in PATH?", Color.RED))
         os.remove(thumbnail)
         return None
     else:
         if not media_management.add_metadata(filename, thumbnail, video.author, video.title, verbose):
-            print(Color.string(f"Could not add metadata for {video.title}.", Color.RED))
+            print(Color.string(
+                f"Could not add metadata for {video.title}.", Color.RED))
         else:
             print(Color.string(f"{filename} - Done.", Color.GREEN))
 
     if media_type == "video" and audio_path:
         print(Color.string("Merging audio and video together... ", Color.YELLOW), end="")
-        filename = media_management.merge_video_audio(filename, audio_path, verbose)
+        filename = media_management.merge_video_audio(
+            filename, audio_path, verbose)
         if not filename:
             print(Color.string("Error while merging audio and video files.", Color.RED))
         else:
@@ -196,7 +207,8 @@ if __name__ == "__main__":
     try:
         from winreg import *
         with OpenKey(HKEY_CURRENT_USER, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders') as key:
-            default_save_path = str(QueryValueEx(key, '{374DE290-123F-4565-9164-39C4925E467B}')[0])
+            default_save_path = str(QueryValueEx(
+                key, '{374DE290-123F-4565-9164-39C4925E467B}')[0])
     except:
         default_save_path = os.getcwd()
 
@@ -240,7 +252,8 @@ if __name__ == "__main__":
             {"action": "video", "text": "Download video from URL"},
             {"action": "best_quality", "text":
                 f"Automatically get best quality [current: {Color.string(best_quality, Color.GREEN if best_quality else Color.RED)}]"},
-            {"action": "output_folder", "text": f"Set folder [current: {Color.string(output_folder, Color.YELLOW)}]"},
+            {"action": "output_folder",
+                "text": f"Set folder [current: {Color.string(output_folder, Color.YELLOW)}]"},
             {"action": "exit", "text": Color.string("Exit", Color.RED)}
         ]
 
@@ -282,17 +295,21 @@ if __name__ == "__main__":
             temp_folder = input("Please enter your folder's path: \n>>> ")
 
             # take into account relative path with ./ or ../
-            temp_folder = os.path.abspath(os.path.join(output_folder, temp_folder))
+            temp_folder = os.path.abspath(
+                os.path.join(output_folder, temp_folder))
 
             while not os.path.isdir(temp_folder):
-                print(Color.string("Path does not exist. Creating directoy... ", Color.YELLOW), end="")
+                print(Color.string(
+                    "Path does not exist. Creating directoy... ", Color.YELLOW), end="")
                 try:
                     path = Path(temp_folder)
                     path.mkdir(parents=True)
                     print(Color.string("Done.", Color.GREEN))
                 except:
-                    print(Color.string("Impossible to create the directory. Please retry.", Color.RED))
-                    temp_folder = input("Please enter your folder's path: \n>>> ")
+                    print(Color.string(
+                        "Impossible to create the directory. Please retry.", Color.RED))
+                    temp_folder = input(
+                        "Please enter your folder's path: \n>>> ")
 
             output_folder = temp_folder
 
@@ -307,10 +324,12 @@ if __name__ == "__main__":
             elif isinstance(url_type, ytb_classes.Playlist):
                 videos = url_type.get_videos()
                 if not videos:
-                    print(Color.string("Cannot fetch Youtube data on provided link. Is it private?", Color.RED))
+                    print(Color.string(
+                        "Cannot fetch Youtube data on provided link. Is it private?", Color.RED))
                     continue
                 else:
-                    print(Color.string(f"{len(videos)} video{'s' if len(videos) > 1 else ''} found in that Playlist.", Color.YELLOW))
+                    print(Color.string(
+                        f"{len(videos)} video{'s' if len(videos) > 1 else ''} found in that Playlist.", Color.YELLOW))
 
                 for video in tqdm(videos, desc="Videos remaining: ", colour="red"):
                     manage_video(video, action)
