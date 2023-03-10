@@ -3,102 +3,130 @@
 # ░▀▀▀░▀░▀░▀░░░▀▀▀░▀░▀░░▀░░▀▀▀
 
 import os
+import re
 import subprocess
-from mutagen.id3 import ID3, APIC, TPE1, TIT2
-from mutagen.mp4 import MP4, MP4Cover
+from mutagen.easyid3 import EasyID3
+from mutagen.mp4 import MP4
 
 # ░█▀▀░█░█░█▀█░█▀▀░▀█▀░▀█▀░█▀█░█▀█░█▀▀
 # ░█▀▀░█░█░█░█░█░░░░█░░░█░░█░█░█░█░▀▀█
 # ░▀░░░▀▀▀░▀░▀░▀▀▀░░▀░░▀▀▀░▀▀▀░▀░▀░▀▀▀
 
-def convert_to(filename: str, extension: str) -> int:
-    """ Returns the new filename
+
+def get_ffmpeg_command_starter(verbose=False) -> list[str]:
+    return ["ffmpeg", "-hide_banner", "-loglevel", "error" if not verbose else "warning",
+            "-stats"]
+
+
+def convert_to(filename: str, extension: str, verbose=False, force=False) -> str:
+    """ Convert given file to extension with ffmpeg binary.
+    Returns the new filename or None if failed.
     """
-    if extension == filename.split(".")[-1]:
+    if not force and extension == filename.split(".")[-1]:
         return filename
 
-    dir_path = os.path.dirname(filename) if len(os.path.dirname(filename)) > 0 else os.getcwd()
-    new_filename = dir_path + "/" + os.path.splitext(os.path.basename(filename))[0] + "." + extension
-    command = ["ffmpeg.exe", "-hide_banner", "-i", f'{filename}', "-y", f'{new_filename}']
+    dir_path = os.path.dirname(filename) if len(
+        os.path.dirname(filename)) > 0 else os.getcwd()
+    new_filename = dir_path + "\\" + \
+        os.path.splitext(os.path.basename(filename))[0] + "." + extension
+    command = get_ffmpeg_command_starter(
+        verbose) + ["-i", r"{}".format(filename)]
+
+    # if we want less size output, encoding with hevc = libx265 and higher crf to 24 for less size
+    # if extension == "mp4":
+    #     command += ["-c:v", "hevc", "-crf", "24"]
+
+    # remove video data from the file, if any
+    if extension == "mp3":
+        command += ["-vn"]
+
+    command += ["-y", r"{}".format(new_filename)]
+
+    if verbose:
+        print(" ".join(command))
 
     subprocess.call(command, shell=True)
+
     os.remove(filename)
+
+    if force:
+        return convert_to(new_filename, "mp3", verbose)
+
+    if not os.path.isfile(new_filename):
+        return None
     return new_filename
 
-def add_metadata(filename: str, thumbnail: str, author: str, title: str):
-    """
+
+def add_metadata(filename: str, thumbnail: str, author: str, title: str, verbose=False) -> bool:
+    """ Adds metadata to a media file
     Args:
         filename: the path for the mp3 file
         thumbnail: the path for the image
         author: the author of the audio
         title: the media title
+        verbosity: the command verbosity
+
+    Returns:
+        boolean success
     """
-    if filename.endswith(".mp3"):
-        return add_audio_metadata(filename, thumbnail, author, title)
-    if filename.endswith(".mp4"):
-        return add_video_metadata(filename, thumbnail, author, title)
-    else:
-        return False
+    output_filename = filename + "_temp" + os.path.splitext(filename)[1]
 
-def add_audio_metadata(filename: str, thumbnail: str, author: str, title: str):
+    command = get_ffmpeg_command_starter(verbose) + ["-i", r"{}".format(thumbnail), "-i", r"{}".format(filename),
+                                                     "-map", "0", "-map", "1", "-c", "copy",
+                                                     "-metadata", r'artist={}'.format(author)
+                                                     , "-metadata", r'title={}'.format(title), r"{}".format(output_filename)]
 
-    if not filename.endswith(".mp3"):
-        return False
+    if verbose:
+        print(" ".join(command))
 
-    # Open the MP3 file
-    audio = ID3(filename)
-
-    # Set the MIME type for the image
-    mime_type = 'image/jpeg'
-
-    # Open the image file and read its data
-    with open(thumbnail, 'rb') as f:
-        image_data = f.read()
-
-    # Add the image data as the album art
-    audio.add(APIC(mime=mime_type, type=3, desc='cover', data=image_data))
-
-    # Add the artist name as a tag
-    audio.add(TPE1(encoding=3, text=author))
-
-    # Add the title as a tag
-    audio.add(TIT2(encoding=3, text=title))
-
-    audio.save()
+    subprocess.call(command, shell=True)
+    
+    os.remove(filename)
     os.remove(thumbnail)
-    return True
+    os.rename(output_filename, filename)
 
-def add_video_metadata(filename: str, thumbnail: str, author: str, title: str):
+    # Check file metadata
+    try:
+        if filename.endswith(".mp3"):
+            metadata = EasyID3(filename)
+        elif filename.endswith(".mp4"):
+            metadata = MP4(filename).tags
 
-    if not filename.endswith(".mp4"):
+        # Get the title metadata
+        title = metadata.get("title")
+
+        return title != None
+    except:
         return False
 
-    # Open the MP4 file
-    video = MP4(filename)
 
-    # Open the image file and read its data
-    with open(thumbnail, 'rb') as f:
-        image_data = f.read()
-
-    # Set the thumbnail
-    image_format_code = 13  # This is the code for JPEG format
-    cover = MP4Cover(image_data, imageformat=image_format_code)
-
-    # Add the thumbnail to the video file
-    video['covr'] = [cover]
-
-    # Add the author to the video file
-    video['©ART'] = [author]
-
-    # Add the title to the video file
-    video['©nam'] = [title]
-
-    # Save the changes to the MP4 file
-    video.save()
-    os.remove(thumbnail)
-    return True
-
-def get_valid_filename(filename: str):
-    for bad_char in ["/", "\\", "|", ":", "*", "?", "'", '"', "<", ">"]:
-        filename = filename.replace(bad_char, "_")
+def get_valid_filename(filename: str, backslash=False) -> str:
+    """ Will remove any bad character for a filename
+    """
+    bad_chars = ["/", "|", ":", "*", "?", "'", '"', "<", ">"]
+    if not backslash:
+        bad_chars.append("\\")
+    for bad_char in bad_chars:
+        filename = filename.replace(bad_char, ("\\" + bad_char if backslash else "_"))
     return filename
+
+
+def merge_video_audio(video_path: str, audio_path: str, verbose=False) -> str:
+    """ Will merge an audio and a video file together
+    """
+    output_path = video_path + "_temp.mp4"
+    command = get_ffmpeg_command_starter(verbose) + [
+        r"{}".format(
+            video_path), "-i", r"{}".format(audio_path), "-c:v", "copy", "-c:a", "aac",
+        "-map", "0:v:1", "-map", "1:a:0", "-y", r"{}".format(output_path)]
+
+    if verbose:
+        print(" ".join(command))
+
+    subprocess.call(command, shell=True)
+
+    os.remove(video_path)
+    os.remove(audio_path)
+    os.rename(output_path, video_path)
+
+    return output_path

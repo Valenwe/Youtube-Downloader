@@ -7,6 +7,10 @@ import msvcrt
 from enum import Enum
 from tqdm import tqdm
 import os
+import sys
+from pathlib import Path
+import locale
+locale.setlocale(locale.LC_NUMERIC, 'pl_PL')
 
 import ytb_classes
 import download
@@ -66,13 +70,30 @@ def detect_url(in_url: str) -> tuple[str, object]:
                 "Provided link is not a valid Youtube link.", Color.RED))
     return url, url_type
 
-def manage_video(video: ytb_classes.Video, media_type: str):
+def manage_video(video: ytb_classes.Video, media_type: str) -> str | None:
     """ Will retrieve video intel, download and convert it
     Args:
         video (Video): the video class instance
         media_type (str): either "audio" or "video"
+    
+    Returns:
+        the downloaded and converted file path
     """
+    # If video type, we have to download the audio first
+    if media_type == "video":
+        print(Color.string("I have to download the audio first", Color.YELLOW))
+        audio_path = manage_video(video, "audio")
+
+        if not audio_path:
+            return None
+        else:
+            print(Color.string("Then I have to download the video", Color.YELLOW))
+
     formats = video.get_extraction_url()
+    if not formats:
+        print(Color.string("Cannot fetch Youtube data on provided link. Is it private?", Color.RED))
+        return None
+    
     usable_formats = []
 
     if len(formats[media_type]) == 0:
@@ -89,10 +110,17 @@ def manage_video(video: ytb_classes.Video, media_type: str):
         i = 0
         for format in usable_formats:
             i += 1
-            display_format = {"Mime": format["mime"], "Bitrate": format["bitrate"]}
+            display_format = {"Mime": format["mime"], "Bitrate": locale.format_string('%.2d', format["bitrate"], grouping=True)}
             print(f"\n{i}. ", end="")
             for elem in display_format:
-                print(Color.string(elem, Color.YELLOW) + ": " + Color.string(display_format[elem], Color.GREEN), end=" ")
+                # padding system for a better view of the stats
+                if elem != list(display_format.keys())[-1]:
+                    padding = " " + "." * 25
+                    print_padding = "{:.70s}"
+                else:
+                    padding = ""
+                    print_padding = "{}"
+                print(print_padding.format(Color.string(elem, Color.YELLOW) + ": " + Color.string(display_format[elem], Color.GREEN) + padding), end=" ")
 
         print("\n\n>>> ", end="")
         choice = str(msvcrt.getch()).split("'")[1].upper()
@@ -113,17 +141,32 @@ def manage_video(video: ytb_classes.Video, media_type: str):
     ext_destination = "mp3" if media_type == "audio" else "mp4"
 
     download.download_file(selected_format["url"], filename)
-    download.download_file(video.thumbnail, thumbnail, display_bar=False)
+    download.simple_download(video.thumbnail, thumbnail)
 
-    filename = media_management.convert_to(filename, ext_destination)
+    filename = media_management.convert_to(filename, ext_destination, verbose)
+    # if ext_destination == "mp3" and os.path.getsize(filename) > 10 * 1000 * 1000:
+    #     print(Color.string("Converted file is too large, re-converting...", Color.RED))
+    #     filename = media_management.convert_to(filename, ext_destination, verbose)
 
     if not filename:
         print(Color.string(f"Could not convert to {ext_destination}. Do you have ffmpeg in PATH?", Color.RED))
+        os.remove(thumbnail)
+        return None
     else:
-        if not media_management.add_metadata(filename, thumbnail, video.author, video.title):
+        if not media_management.add_metadata(filename, thumbnail, video.author, video.title, verbose):
             print(Color.string(f"Could not add metadata for {video.title}.", Color.RED))
         else:
-            print(Color.string(f"{video.title} - Done.", Color.GREEN))
+            print(Color.string(f"{filename} - Done.", Color.GREEN))
+
+    if media_type == "video" and audio_path:
+        print(Color.string("Merging audio and video together... ", Color.YELLOW), end="")
+        filename = media_management.merge_video_audio(filename, audio_path, verbose)
+        if not filename:
+            print(Color.string("Error while merging audio and video files.", Color.RED))
+        else:
+            print(Color.string("Done.", Color.GREEN))
+
+    return filename
 
 
 # ░█▄█░█▀█░▀█▀░█▀█
@@ -140,12 +183,17 @@ if __name__ == "__main__":
     except:
         default_save_path = os.getcwd()
 
+    # Verbosity parameter
+    verbose = len(sys.argv) > 1 and sys.argv[1].lower() == "-v"
+
     banner = """
 ░█░█░█▀█░█░█░▀█▀░█░█░█▀▄░█▀▀░░░█▀▄░█▀█░█░█░█▀█░█░░░█▀█░█▀█░█▀▄░█▀▀░█▀▄
 ░░█░░█░█░█░█░░█░░█░█░█▀▄░█▀▀░░░█░█░█░█░█▄█░█░█░█░░░█░█░█▀█░█░█░█▀▀░█▀▄
 ░░▀░░▀▀▀░▀▀▀░░▀░░▀▀▀░▀▀░░▀▀▀░░░▀▀░░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀░░▀▀▀░▀░▀
                                                             by Valenwe
     """
+    if verbose:
+        banner += Color.string("(Verbosity ENABLED)\n", Color.CYAN)
     print(Color.string(banner, Color.YELLOW, True))
 
     # Global variables
@@ -170,7 +218,7 @@ if __name__ == "__main__":
     while not end_loop:
         menu = [
             {"action": "url",
-                "text": f"Enter URL [current: {Color.string(type(url_type).__name__ + ' => ' + url_type.url, Color.GREEN) if url_type else Color.string(url, Color.RED)}]"},
+                "text": f"Enter URL [current: {Color.string(type(url_type).__name__ + ' <=> ' + url_type.url, Color.GREEN) if url_type else Color.string(url, Color.RED)}]"},
             {"action": "audio", "text": "Download audio from URL"},
             {"action": "video", "text": "Download video from URL"},
             {"action": "best_quality", "text":
@@ -184,10 +232,13 @@ if __name__ == "__main__":
         for i in range(len(menu)):
             print(f"{i + 1}. {menu[i]['text']}")
 
-        if not input_char:
-            print("\n>>> ", end="")
-            input_char = str(msvcrt.getch()).split("'")[1].upper()
-            print(input_char)
+        print("\n>>> ", end="")
+        input_char = str(msvcrt.getch()).split("'")[1].upper()
+        print(input_char)
+
+        # Flush input buffer
+        while msvcrt.kbhit():
+            msvcrt.getch()
 
         # Try to get the entered action
         try:
@@ -210,9 +261,20 @@ if __name__ == "__main__":
 
         elif action == "output_folder":
             temp_folder = input("Please enter your folder's path: \n>>> ")
+
+            # take into account relative path with ./ or ../
+            temp_folder = os.path.abspath(os.path.join(output_folder, temp_folder))
+
             while not os.path.isdir(temp_folder):
-                print(Color.string("This path does not exist. Please retry.", Color.RED))
-                temp_folder = input("Please enter your folder's path: \n>>> ")
+                print(Color.string("Path does not exist. Creating directoy... ", Color.YELLOW), end="")
+                try:
+                    path = Path(temp_folder)
+                    path.mkdir(parents=True)
+                    print(Color.string("Done.", Color.GREEN))
+                except:
+                    print(Color.string("Impossible to create the directory. Please retry.", Color.RED))
+                    temp_folder = input("Please enter your folder's path: \n>>> ")
+
             output_folder = temp_folder
 
         elif action == "url":
@@ -224,7 +286,14 @@ if __name__ == "__main__":
                 print(Color.string("No url provided.", Color.RED))
 
             elif isinstance(url_type, ytb_classes.Playlist):
-                for video in tqdm(url_type.get_videos(), desc="Video remaining: ", colour="red"):
+                videos = url_type.get_videos()
+                if not videos:
+                    print(Color.string("Cannot fetch Youtube data on provided link. Is it private?", Color.RED))
+                    continue
+                else:
+                    print(Color.string(f"{len(videos)} video{'s' if len(videos) > 1 else ''} found in that Playlist.", Color.YELLOW))
+
+                for video in tqdm(videos, desc="Videos remaining: ", colour="red"):
                     manage_video(video, action)
                 exit()
 

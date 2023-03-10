@@ -21,16 +21,15 @@ This is a Python console program designed to retrieve and **download** Youtube a
 2. Download audio from URL
 3. Download video from URL
 4. Automatically get best quality [current: True]
-5. Set folder [current: C:\]
+5. Set folder [current: C:\Users\Downloads]
 6. Exit
 ```
 
 ![Example](example.gif)
 
+- There is the possibility to add some verbosity over the ffmpeg commands by using `-v` parameter while running `main.py`.
+
 ## Insight
 
-The program is self efficient and does not depend on any Google API, or known Youtube Python module like **youtube-dl** or **pytube**. Though I used some code from **pytube** for Playlist listing, most of the code is using low level modules like `requests` or `urllib` to retrieve information and data.
-
-## To-do
-
-In case of video downloading, most of the time the file has no sound. I should add a feature that download both audio and video, and mix them together with ffmpeg.
+- The program is self efficient and does not depend on any Google API, or known Youtube Python module like **youtube-dl** or **pytube**. Though I used some code from **pytube** for Playlist listing, most of the code is using low level modules like `requests` or `urllib` to retrieve information and data.
+- All the audio and video encoding is done via FFMPEG (a usable Windows binary is in the repository).

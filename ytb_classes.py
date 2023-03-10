@@ -23,7 +23,10 @@ from urllib.parse import urlparse, parse_qs
 class Video:
     def __init__(self, url: str):
         try:
-            self.id = re.search(r'(?<=v=)[^&]+', url).group(0)
+            if "v=" in url:
+                self.id = re.search(r'(?<=v=)[^&]+', url).group(0)
+            else:
+                self.id = url.split("/")[-1]
             self.url = f"https://www.youtube.com/watch?v={self.id}"
         except:
             raise ValueError("Given link is not a Youtube video")
@@ -79,20 +82,19 @@ class Video:
 
         return data
 
-    def get_extraction_url(self) -> dict:
+    def get_extraction_url(self) -> dict | None:
         data = self._get_valid_format()
 
         # retry counter
         retry = 3
-        while "videoDetails" not in data.keys() and retry > 0:
+        while "videoDetails" not in data.keys() or "streamingData" not in data.keys() and retry > 0:
             data = self._get_valid_format()
             retry -= 1
             logging.error("Could not fetch video data, retrying...")
             time.sleep(2)
 
-        if "videoDetails" not in data.keys():
-            logging.error("Exiting :(")
-            exit()
+        if "videoDetails" not in data.keys() or "streamingData" not in data.keys():
+            return None
 
         # Set the video title
         self.title = data["videoDetails"]["title"]
@@ -190,10 +192,15 @@ class Playlist:
                 if "contents" in js.keys():
                     return js
 
-    def get_videos(self) -> list[Video]:
+    def get_videos(self) -> list[Video] | None:
         """ Get videos (works only for <= 100 videos)
         """
         init_data = self._get_initial_data()
+
+        # Check for valid playlist
+        if not init_data or "contents" not in init_data:
+            return None
+
         section_contents = init_data["contents"][
             "twoColumnBrowseResultsRenderer"][
             "tabs"][0]["tabRenderer"]["content"][

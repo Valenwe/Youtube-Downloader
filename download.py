@@ -10,7 +10,16 @@ from tqdm import tqdm
 # ░█▀▀░█░█░█░█░█░░░░█░░░█░░█░█░█░█░▀▀█
 # ░▀░░░▀▀▀░▀░▀░▀▀▀░░▀░░▀▀▀░▀▀▀░▀░▀░▀▀▀
 
-def download_chunk(url, start, end, buffer, timeout, filename):
+def simple_download(url: str, filename: str):
+    """ Simple download using get request. Works better for static small files.
+    """
+    response = requests.get(url)
+    with open(filename, "wb") as file:
+        file.write(response.content)
+
+def download_chunk(url: str, start: str, end: str, buffer: str, timeout: int, filename: str):
+    """ Defines the chunk to download
+    """
     headers = {'Range': f'bytes={start}-{end}'}
     response = requests.get(url, headers=headers, stream=True, timeout=timeout)
 
@@ -23,6 +32,9 @@ def download_chunk(url, start, end, buffer, timeout, filename):
                     bar.update()
 
 def download_file(url: str, filename: str, num_threads = 8, chunk_size = 1024 * 1024 * 4, timeout = 10, display_bar = True):
+    """ Download a given url by splitting the download into threads depending on a given chunk_size.
+    Doesn't seem to work for small files < 1 Mo
+    """
     if chunk_size % 1024 != 0 or num_threads <= 0:
         return None
 
@@ -37,7 +49,7 @@ def download_file(url: str, filename: str, num_threads = 8, chunk_size = 1024 * 
 
     global bar
     if display_bar:
-        bar = tqdm(total = (total_size // chunk_size + 1), desc="Remaining parts", colour="yellow")
+        bar = tqdm(total = (total_size // chunk_size + 1), desc="Downloading file", colour="yellow")
     else:
         bar = None
 
