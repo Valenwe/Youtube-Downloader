@@ -99,9 +99,13 @@ class Video:
         # Set the video title
         self.title = data["videoDetails"]["title"]
 
-        # Get the standard thumbnail from the youtube img domain
-        # also accessible through data["videoDetails"]["thumbnail"]["thumbnails"][0]["url"]
-        self.thumbnail = f"https://i.ytimg.com/vi/{self.id}/sddefault.jpg"
+        # Try to fetch the thumbnail, as sometimes the sddefault.jpg does not exist
+        for image_name in ["sddefault.jpg", "mqdefault.jpg", "default.jpg"]:
+            self.thumbnail = f"https://i.ytimg.com/vi/{self.id}/{image_name}"
+            test_thumbnail = requests.get(self.thumbnail)
+
+            if test_thumbnail.status_code != 404:
+                break
 
         # Get the author
         self.author = data["videoDetails"]["author"]
