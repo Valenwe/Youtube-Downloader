@@ -8,6 +8,7 @@ from enum import Enum
 from tqdm import tqdm
 import os
 import sys
+import git
 from pathlib import Path
 import locale
 locale.setlocale(locale.LC_NUMERIC, 'pl_PL')
@@ -47,6 +48,22 @@ class Color(Enum):
 
         return f'{boldstr}{color.value}{string}{Color.END.value}'
 
+def check_current_git_version():
+    """ Check if current Git repository is up to date
+    """
+    # Initialize a GitPython Repo object for the existing repository
+    repo = git.Repo(os.getcwd())
+
+    # Fetch the latest changes from the remote repository
+    repo.remotes.origin.fetch()
+
+    # Get the current branch
+    branch = repo.active_branch
+
+    # Check if the local branch is up to date with the remote branch
+    if branch.commit.hexsha != repo.remotes.origin.refs[branch.name].commit.hexsha:
+        print(Color.string(f"Current repository is not up to date. Try updating it with git clone {Color.string(repo.remotes.origin.url, Color.CYAN)}", Color.RED))
+
 def detect_url(in_url: str) -> tuple[str, object]:
     """ Will try to convert a URL to a special class
     Args:
@@ -75,7 +92,7 @@ def manage_video(video: ytb_classes.Video, media_type: str) -> str | None:
     Args:
         video (Video): the video class instance
         media_type (str): either "audio" or "video"
-    
+
     Returns:
         the downloaded and converted file path
     """
@@ -93,7 +110,7 @@ def manage_video(video: ytb_classes.Video, media_type: str) -> str | None:
     if not formats:
         print(Color.string("Cannot fetch Youtube data on provided link. Is it private?", Color.RED))
         return None
-    
+
     usable_formats = []
 
     if len(formats[media_type]) == 0:
@@ -226,6 +243,8 @@ if __name__ == "__main__":
             {"action": "output_folder", "text": f"Set folder [current: {Color.string(output_folder, Color.YELLOW)}]"},
             {"action": "exit", "text": Color.string("Exit", Color.RED)}
         ]
+
+        check_current_git_version()
 
         # display menu and get user input
         print("")
