@@ -26,7 +26,7 @@ def convert_to(filename: str, extension: str, verbose=False, force=False) -> str
         return filename
 
     dir_path = os.path.dirname(filename) if len(
-        os.path.dirname(filename)) > 0 else os.getcwd()
+        os.path.dirname(filename)) > 0 else os.path.dirname(os.path.realpath(__file__))
     new_filename = dir_path + "\\" + \
         os.path.splitext(os.path.basename(filename))[0] + "." + extension
     command = get_ffmpeg_command_starter(
@@ -80,7 +80,7 @@ def add_metadata(filename: str, thumbnail: str, author: str, title: str, verbose
         print(" ".join(command))
 
     subprocess.call(command, shell=True)
-    
+
     os.remove(filename)
     os.remove(thumbnail)
     os.rename(output_filename, filename)

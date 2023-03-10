@@ -53,7 +53,7 @@ def check_current_git_version():
     """ Check if current Git repository is up to date
     """
     # Initialize a GitPython Repo object for the existing repository
-    repo = git.Repo(os.getcwd())
+    repo = git.Repo(os.path.dirname(os.path.realpath(__file__)))
 
     # Fetch the latest changes from the remote repository
     repo.remotes.origin.fetch()
@@ -65,6 +65,8 @@ def check_current_git_version():
     if branch.commit.hexsha != repo.remotes.origin.refs[branch.name].commit.hexsha:
         print(Color.string(
             f"Current repository is not up to date. Try updating it with {Color.string(f'git clone {repo.remotes.origin.url}', Color.CYAN)}", Color.RED))
+    else:
+        print(Color.string("Version up to date.", Color.GREEN))
 
 
 def detect_url(in_url: str) -> tuple[str, object]:
@@ -210,7 +212,7 @@ if __name__ == "__main__":
             default_save_path = str(QueryValueEx(
                 key, '{374DE290-123F-4565-9164-39C4925E467B}')[0])
     except:
-        default_save_path = os.getcwd()
+        default_save_path = os.path.dirname(os.path.realpath(__file__))
 
     # Verbosity parameter
     verbose = len(sys.argv) > 1 and sys.argv[1].lower() == "-v"
@@ -219,8 +221,7 @@ if __name__ == "__main__":
 ░█░█░█▀█░█░█░▀█▀░█░█░█▀▄░█▀▀░░░█▀▄░█▀█░█░█░█▀█░█░░░█▀█░█▀█░█▀▄░█▀▀░█▀▄
 ░░█░░█░█░█░█░░█░░█░█░█▀▄░█▀▀░░░█░█░█░█░█▄█░█░█░█░░░█░█░█▀█░█░█░█▀▀░█▀▄
 ░░▀░░▀▀▀░▀▀▀░░▀░░▀▀▀░▀▀░░▀▀▀░░░▀▀░░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀░░▀▀▀░▀░▀
-                                                            by Valenwe
-    """
+                                                            by Valenwe"""
     if verbose:
         banner += Color.string("(Verbosity ENABLED)\n", Color.CYAN)
     print(Color.string(banner, Color.YELLOW, True))
