@@ -182,15 +182,13 @@ def manage_video(video: ytb_classes.Video, media_type: str) -> str | None:
         return None
     else:
         if not media_management.add_metadata(filename, thumbnail, video.author, video.title, verbose):
-            print(Color.string(
-                f"Could not add metadata for {video.title}.", Color.RED))
+            print(Color.string(f"Could not add metadata for {video.title}.", Color.RED))
         else:
             print(Color.string(f"{filename} - Done.", Color.GREEN))
 
     if media_type == "video" and audio_path:
         print(Color.string("Merging audio and video together... ", Color.YELLOW), end="")
-        filename = media_management.merge_video_audio(
-            filename, audio_path, verbose)
+        filename = media_management.merge_video_audio(filename, audio_path, verbose)
         if not filename:
             print(Color.string("Error while merging audio and video files.", Color.RED))
         else:

@@ -79,7 +79,7 @@ def add_metadata(filename: str, thumbnail: str, author: str, title: str, verbose
     if verbose:
         print(" ".join(command))
 
-    subprocess.call(command, shell=True)
+    subprocess.call(command, shell=True, stdin=subprocess.DEVNULL)
 
     os.remove(filename)
     os.remove(thumbnail)
@@ -115,10 +115,9 @@ def merge_video_audio(video_path: str, audio_path: str, verbose=False) -> str:
     """ Will merge an audio and a video file together
     """
     output_path = video_path + "_temp.mp4"
-    command = get_ffmpeg_command_starter(verbose) + [
-        r"{}".format(
-            video_path), "-i", r"{}".format(audio_path), "-c:v", "copy", "-c:a", "aac",
-        "-map", "0:v:1", "-map", "1:a:0", "-y", r"{}".format(output_path)]
+    command = get_ffmpeg_command_starter(verbose) + \
+    ["-i", r"{}".format(video_path), "-i", r"{}".format(audio_path), "-c:v", "copy", "-c:a", "aac",
+        "-map", "0:v:1?", "-map", "0:v:0?", "-map", "1:a:0", "-y", r"{}".format(output_path)]
 
     if verbose:
         print(" ".join(command))
