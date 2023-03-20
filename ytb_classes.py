@@ -117,7 +117,12 @@ class Video:
         for format in raw_formats:
             try:
                 important_keys = {"itag": format["itag"], "mime": format["mimeType"],
-                                  "url": format["url"], "bitrate": format["averageBitrate"]}
+                                  "url": format["url"]}
+
+                if "averageBitrate" in format.keys():
+                    important_keys["bitrate"] = format["averageBitrate"]
+                else:
+                    important_keys["bitrate"] = format["bitrate"]
 
                 # In case of video
                 if "qualityLabel" in format.keys():
@@ -129,7 +134,7 @@ class Video:
 
                 all_info["formats"].append(important_keys)
             except:
-                logging.error(f"Could not fetch format {format}")
+                logging.exception(f"Could not fetch format {format}")
 
         # Create separate lists for audio and video
         audio_list = []
