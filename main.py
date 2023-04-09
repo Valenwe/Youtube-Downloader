@@ -333,10 +333,8 @@ if __name__ == "__main__":
 
                 for video in tqdm(videos, desc="Videos remaining: ", colour="red"):
                     manage_video(video, action)
-                exit()
 
             elif isinstance(url_type, ytb_classes.Video):
                 manage_video(url_type, action)
-                exit()
 
         input_char = None
